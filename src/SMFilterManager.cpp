@@ -8,26 +8,68 @@
 #include "SMFilter.h"
 #include "SMFilterManager.h"
 #include <kernel/image.h>
+#include <storage/Directory.h>
 
-SMFilterManager::SMFilterManager() {
+SMFilterManager::SMFilterManager() :
+	fList(BMessage(SM_FILTER_LIST)),
+	fNames(BMessage(SM_UPDATE_ADDONS))
+{
 	filters = new BList;
-	lock = new BLocker("FilterManager Lock");
+	lock = new BLocker("Filter List Lock");
+	
+	// load add-ons
+	// this is ugly - should search other places
+	char * path="/boot/home/config/add-ons/SoundMangler/";
+	BDirectory dir(path);
+	image_id image;
+	char name[B_FILE_NAME_LENGTH];
+	BEntry entry;
+	while (B_ENTRY_NOT_FOUND != dir.GetNextEntry(&entry)) {
+		entry.GetName(name);
+		//entry.GetRef(&tmpRef);
+		char * filterName = new char[strlen(name) + 1];
+		strcpy(filterName, name);
+		char * filterFileName = new char[strlen(path) + strlen(filterName) + 1];
+		strcpy(filterFileName, path);
+		strcat(filterFileName, filterName);
+		fprintf(stdout, "trying %s\n", filterFileName); fflush(stdout);
+		image = load_add_on(filterFileName);
+		fprintf(stdout, "image_id = %d\n", image); fflush(stdout);
+		if (image < 0) {
+			fprintf(stdout, "couldn't load %s image\n", filterName); fflush(stdout); 
+		}
+		images[filterName]=image;  // add to map
+		fNames.AddString("addon_name", filterName);
+	}	
 }
 
 SMFilterManager::~SMFilterManager() {
+
 	// delete filters and unload images
-	image_id image;
+
+	for (image_id_map::iterator p=images.begin(); p!=images.end(); ++p) {
+		fprintf(stdout, "Unloading %s, id: %d. ", (*p).first.c_str(), (*p).second); fflush(stdout);
+		unload_add_on((*p).second);
+		fprintf(stdout, "done.\n"); fflush(stdout);
+	}	
+
+	fprintf(stdout, "Deleting filters. "); fflush(stdout);
 	SMFilter* f;
-	SMFilter* tmp;
+	SMFilter* tmp;		
 	for (long i = 0; f = (SMFilter*)filters->ItemAt(i); i++) {
-		unload_add_on(f->ReturnImageID());
 		tmp = (SMFilter*)filters->RemoveItem(i);
 		delete tmp;
 	}
+	fprintf(stdout, "done.\n"); fflush(stdout);
 
 	// delete lists and lock
+	// (make sure we're not filtering!)
+	fprintf(stdout, "Deleting filters. "); fflush(stdout);
 	delete filters;
+	fprintf(stdout, "done.\n"); fflush(stdout);
+	fprintf(stdout, "Deleting lock. "); fflush(stdout);
 	delete lock;
+	fprintf(stdout, "done.\n"); fflush(stdout);
 }
 
 BLocker* SMFilterManager::getLock() const {
@@ -38,36 +80,22 @@ BList* SMFilterManager::getFilterList() const {
 	return filters;
 }
 
-status_t SMFilterManager::Commission(char* filterName, int32 index) {
+status_t SMFilterManager::Activate(char* filterName, int pos, filter_id& fID) {
 
-	// is add-on loaded? 
+	// find addon image
 	image_id image;
-	SMFilter* f;
-	int inUse = 0;
-	for (long i = 0; f = (SMFilter*)filters->ItemAt(i); i++) {
-		if (! strcmp(f->ReturnName(), filterName)) {
-			image = f->ReturnImageID();
-			inUse++;
-			fprintf(stdout, "image for filter %s is already loaded\n", 
-				filterName); fflush(stdout);
-			break;
-		}
+	image_id_map::iterator p = images.find(filterName);
+	if (p!=images.end()) {
+		image = (*p).second;
+		fprintf(stdout, "image for filter %s is %d\n", 
+			filterName, image); fflush(stdout);
 	}
-	if (! inUse) {
-		fprintf(stdout, "loading %s image\n", filterName); fflush(stdout);
-		char * path = "/boot/apps/SoundMangler/add-ons/";
-		char * filterFileName = new char(strlen(path) + strlen(filterName) + 1);
-		strcpy(filterFileName, path);
-		strcat(filterFileName, filterName);
-		fprintf(stdout, "trying %s\n", filterFileName); fflush(stdout);
-		image = load_add_on(filterFileName);
-		fprintf(stdout, "image_id = %d\n", image); fflush(stdout);
-		if (image < 0) {
-			fprintf(stdout, "couldn't load %s image\n", filterName); fflush(stdout); 
-			(new BAlert("", "couldn't load image", "Damn"))->Go();
-			exit(0);
-		}
-	}
+	else {
+		fprintf(stdout, "couldn't find %s's image\n", filterName); fflush(stdout); 
+		(new BAlert("", "couldn't find image", "Damn"))->Go();
+		return B_ERROR;
+	}	
+
 	// get function pointer to MakeNewFilter
 	fprintf(stdout, "Getting creator function\n"); fflush(stdout);
 	SMFilter* (*creator)(char* fname, image_id img);
@@ -78,6 +106,7 @@ status_t SMFilterManager::Commission(char* filterName, int32 index) {
 		) {
 		// upon an error, cry like a baby
 		(new BAlert("", "couldn't get creator function!", "Damn"))->Go();
+		fprintf(stdout, "couldn't get creator function!\n"); fflush(stdout);
 		exit(0);
 	}
 	// create filter
@@ -85,13 +114,14 @@ status_t SMFilterManager::Commission(char* filterName, int32 index) {
 	SMFilter* filter = (*creator)(filterName, image);
 	if (NULL == filter) {
 		(new BAlert("", "filter is NULL", "Damn"))->Go();
+		fprintf(stdout, "filter is NULL!\n"); fflush(stdout);
 		exit(0);
 	}
 	// call filter's initialize function
 	fprintf(stdout, "initializing filter\n"); fflush(stdout);
 	if (filter->Initialize() != B_OK) {
-		(new BAlert("", "Problem initializing filter.", "OK"))->Go();
 		fprintf(stdout, "Problem initializing filter.\n"); fflush(stdout);
+		(new BAlert("", "Problem initializing filter.", "OK"))->Go();
 		delete filter;
 		unload_add_on(image);
 		// BAlert error in filter
@@ -100,39 +130,55 @@ status_t SMFilterManager::Commission(char* filterName, int32 index) {
 	}
 	// add to lists
 	fprintf(stdout, "adding the filter to the list\n"); fflush(stdout);
+	// filter id
+	filter_id id = (filter_id)filter;
+	ids[id] = filter;
+	// filter* list
 	lock->Lock();
-	filters->AddItem(filter);
+	filters->AddItem(filter, pos);
 	lock->Unlock();
-	
+		
+	// set the filter id
+	fID = id;
 	return B_OK;
 }
 
-status_t SMFilterManager::Decommission(int32 index) {
-	// Remove from the list
-	lock->Lock();
-	SMFilter* tmp = (SMFilter*)filters->RemoveItem(index);
-	lock->Unlock();
+status_t SMFilterManager::Deactivate(filter_id id) {
+	// get the filter
+	SMFilter* tmpf;
+	filter_id_map::iterator p = ids.find(id);
+	if (p!=ids.end()) {
+		tmpf = (*p).second;
+		fprintf(stdout, "found filter by id %d\n",  id); fflush(stdout);
+	}
+	else
+		fprintf(stdout, "Damn! find filter by id %d failed!\a\n",  id); fflush(stdout);
 	
-	// Housekeeping
-	//  unload image if no longer in use
-	image_id img = tmp->ReturnImageID();
-	SMFilter* f; // temp filter
-	int inUse = 0;
-	for (long i = 0; f = (SMFilter*)filters->ItemAt(i); i++) {
-		if (f->ReturnImageID() == img) {
-			inUse++;
-			break;
-		}
+	// remove the filter from the list	
+	lock->Lock();
+	if (!(SMFilter*)filters->RemoveItem(tmpf)) {
+		fprintf(stdout, "FilterManager: Couldn't remove the filter!\n"); fflush(stdout);
+		return B_ERROR;
 	}
-	if (inUse == 0) {
-		unload_add_on(img);
-	}
+	lock->Unlock();
+
 	//  delete filter
-	delete tmp;
-	
-	return B_OK;
+	delete tmpf;
+	return B_OK;	
 }
 
-SMFilter* SMFilterManager::getFilterByIndex(int32 index) {
-	return(SMFilter*)(filters->ItemAt(index));
+BView* SMFilterManager::PrefsView(filter_id id) { return NULL; } 
+BView* SMFilterManager::AboutView(filter_id id) { return NULL; } 
+
+BMessage* SMFilterManager::getIDMapList() { 
+	// shove the map contents into a message
+	for (filter_id_map::iterator p=ids.begin(); p!=ids.end(); ++p) {
+		fList.AddInt32("filter_id", (*p).first);
+		fList.AddString("filter_name", ((*p).second)->getName());
+	}
+	return &fList;
+}
+
+BMessage* SMFilterManager::getAvailNames() {
+	return &fNames;
 }

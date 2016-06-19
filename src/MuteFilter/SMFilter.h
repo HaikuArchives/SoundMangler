@@ -24,9 +24,9 @@ class SMFilter : public BHandler {
 		virtual const char* getName() const;
 		
 	protected:
-		filter_id MyID;
+		char * _name;
 };
 
-extern "C" SMFilter* MakeNewFilter( const char * name, image_id id );
+extern "C" SMFilter* MakeNewFilter( const char * name );
 
 #pragma export off

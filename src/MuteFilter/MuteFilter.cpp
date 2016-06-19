@@ -3,40 +3,50 @@
 // © 1997 Vikram Kulkarni
 // © 1997 Be Users Group at UIUC
 
+#include "Colors.h"
 #include "MuteFilter.h"
 
 #define MUTE 'mute'
+#define HELP_REQUESTED 'help'
 
-MuteFilter::MuteFilter( const char * name, image_id id )
-	: SMFilter( name, id )
-{
+class MuteFilterView : public BView {
+	public:
+		MuteFilterView( BRect rect, BHandler* filter );
+};
+
+MuteFilter::MuteFilter( const char * name )
+	: SMFilter( name ) {
 	mute = false;
-//	(new BAlert("", "A MuteFilter has been created!", "Whee!"))->Go();
 }
 
-MuteFilter::~MuteFilter()
-{
-}
-
-void MuteFilter::Filter( int16 * left, int16 * right, int32 count)
-{
+void MuteFilter::Filter( int16 * left, int16 * right, int32 count) {
 	if (mute)
-	{
 		for (int i = 0; i <= count; i++)
 			left[i] = right[i] = 0;
+}
+
+BView* MuteFilter::PrefsView( BRect rect ) {
+	return new MuteFilterView( rect, this );
+}
+
+void MuteFilter::MessageReceived( BMessage *msg ) {
+	switch(msg->what)
+	{
+		case MUTE: {
+			mute = !mute;
+			break;
+		}
+		default: {
+			BHandler::MessageReceived(msg);
+			break;
+		}
 	}
 }
 
-BView * MuteFilter::ReturnView( BRect rect )
-{
-	return new MuteFilterView( rect );
-}
-
-MuteFilterView::MuteFilterView( BRect rect )
-	:BView(rect, "background", B_FOLLOW_NONE, B_WILL_DRAW | B_NAVIGABLE)
-{
+MuteFilterView::MuteFilterView( BRect rect, BHandler* filter )
+	:BView(rect, "background", B_FOLLOW_NONE, B_WILL_DRAW | B_NAVIGABLE) {
 	BRect my_rect = rect;
-	SetViewColor(219,219,219);
+	SetViewColor(DarkMetallicBlue);
 	
 	my_rect.bottom = my_rect.top + 40;
 	rect = my_rect;
@@ -46,17 +56,18 @@ MuteFilterView::MuteFilterView( BRect rect )
 	text_view->Insert("	This is a demo filter for Sound Mangler.  It will cut out anything before it in the active plugin list.");
 	text_view->MakeSelectable(false);
 	text_view->MakeEditable(false);
+	text_view->SetViewColor(DarkMetallicBlue);
+	text_view->SetFontAndColor(be_plain_font, B_FONT_ALL, &BeInactiveControlGrey);
 	AddChild(text_view);
 	
 	my_rect.top = my_rect.bottom + 5;
 	my_rect.bottom = my_rect.top + 21;
 	BButton *mute_button = new BButton(rect, "mute_button", "Mute", new BMessage(MUTE));
 	AddChild(mute_button);
-	mute_button->SetTarget(this);
+	mute_button->SetTarget(filter);
 	
-		
 	BMessage *help_msg = new BMessage(HELP_REQUESTED);
-	help_msg->AddString("ADD-ON_NAME", filter->ReturnName());
+	help_msg->AddString("addon_name", filter->Name());
 	my_rect = Bounds();
 	BButton *help_button = new BButton(my_rect, "help_button", "Help", help_msg, B_FOLLOW_RIGHT | B_FOLLOW_BOTTOM);
 	float width = 0.0, height = 0.0;
@@ -67,28 +78,6 @@ MuteFilterView::MuteFilterView( BRect rect )
 	help_button->SetTarget(be_app);
 }
 
-MuteFilterView::~MuteFilterView()
-{
-}
-
-void MuteFilterView::MessageReceived( BMessage *in_msg )
-{
-	switch(in_msg->what)
-	{
-		case MUTE:
-		{
-			filter->mute = !(filter->mute);
-			break;
-		}
-		
-		default:
-		{
-			BView::MessageReceived(in_msg);
-		}
-	}
-}
-
-SMFilter * MakeNewFilter( const char * name, image_id id )
-{
-	return new MuteFilter(name, id);
+SMFilter* MakeNewFilter( const char * name ) {
+	return new MuteFilter(name);
 }
