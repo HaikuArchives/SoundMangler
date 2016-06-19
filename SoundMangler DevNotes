@@ -1,0 +1,15 @@
+SoundMangler
+Developer notes
+The Be Users Group at the University of Illinois at Urbana-Champaign
+bug@acm.uiuc.edu - http://www.acm.uiuc.edu/bug/
+--------------------------------------------------------------------------------------------
+
+1/5/98 Jason Luther <jluther@uiuc.edu>
+	SoundMangler scans the hard-coded add-on directory (/boot/apps/SoundMangler/add-ons/) at startup, and it puts the names of all the files in that directory into a DraggableListView. From there, when an item is dragged to the active filter DraggableListView, the add-on is loaded (if it has not already been loaded), and the add-on's MakeNewFilter() function is called. A filter is created, and it is added to the FilterManager's list of filters. 
+	Other than that, all it can do is open the Sound preferences. I am adding in the FilterManager functionality very slowly. 
+	I can reliably crash the DraggableListView by triple-clicking on a filter in the active filter list. SoundMangler crashes occasionally when you drag a filter from the available to active lists, and I am pretty sure it is not a problem with the DLV. 
+	I have some debugging stuff that gets sent to stdout, and BAlerts pop up all over the place. 
+	My add-on loading code seems to work, and the filter creation usually works (it crashes on the call to MakeNewFilter, but I don't think that is what is causing the problem). 
+	There is a SoundMangler.proj and a MuteFilter.proj. You need to create /boot/apps/SoundMangler/ and /boot/apps/SoundMangler/add-ons/. 
+
+

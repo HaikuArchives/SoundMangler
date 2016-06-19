@@ -1,5 +1,6 @@
-#ifndef SM_FILTER_MANAGER
-#define SM_FILTER_MANAGER
+//#ifndef SM_FILTER_MANAGER
+//#define SM_FILTER_MANAGER
+#pragma once
 
 // SMFilterManager
 //  Jason E. Luther - jluther@uiuc.edu
@@ -7,6 +8,8 @@
 #include <support/Errors.h>
 #include <support/List.h>
 #include <support/Locker.h>
+
+#include "SMFilter.h"
 
 // The SMFilter controls the loading/unloading of add-ons and the
 //  creation and destruction of SMFilters. 
@@ -20,6 +23,7 @@ public:
 	BList* getFilterList() const;
 	status_t Commission(char* filterName, int32 index);
 	status_t Decommission(int32 index);
+	BView* Display(int32 index) { }
 	SMFilter* getFilterByIndex(int32 index);
 	
 private:
@@ -27,5 +31,5 @@ private:
 	BLocker* lock;
 };
 
-#endif // SM_FILTER_MANAGER
+//#endif // SM_FILTER_MANAGER
 

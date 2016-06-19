@@ -1,5 +1,5 @@
 // MuteFilter.cpp
-// VERY Stipid Demo Filter that Mutes everything...
+// VERY Stupid Demo Filter that Mutes everything...
 // © 1997 Vikram Kulkarni
 // © 1997 Be Users Group at UIUC
 
@@ -11,6 +11,7 @@ MuteFilter::MuteFilter( const char * name, image_id id )
 	: SMFilter( name, id )
 {
 	mute = false;
+//	(new BAlert("", "A MuteFilter has been created!", "Whee!"))->Go();
 }
 
 MuteFilter::~MuteFilter()

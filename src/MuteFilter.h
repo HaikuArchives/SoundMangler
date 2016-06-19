@@ -1,5 +1,5 @@
 // MuteFilter.h
-// VERY Stipid Demo Filter that Mutes everything...
+// VERY Stupid Demo Filter that Mutes everything...
 // © 1997 Vikram Kulkarni
 // © 1997 Be Users Group at UIUC
 
@@ -12,6 +12,11 @@ class MuteFilter;
 class MuteFilterView;
 
 #pragma export on
+
+extern "C" {
+SMFilter* MakeNewFilter( const char * name, image_id id );
+}
+
 class MuteFilter : public SMFilter
 {
 	friend class MuteFilterView;

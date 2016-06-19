@@ -11,6 +11,7 @@ SMFilter::SMFilter( const char * name, image_id id )
 	:MyID(id)
 {
 	MyName = strdup(name);
+	(new BAlert(MyName, "Congratulations! You instantiated a filter!", "Whee!"))->Go();
 }
 
 SMFilter::~SMFilter()

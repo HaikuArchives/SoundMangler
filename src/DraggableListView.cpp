@@ -1,10 +1,12 @@
 #include "DraggableListView.h"
 
-DraggableListView::DraggableListView(BRect frame, const char *name, bool new_accepts_drags, bool new_remove_on_drag, list_view_type type, uint32 resizingMode, uint32 flags)
-	:BListView(frame, name, type, resizingMode, flags)
+DraggableListView::DraggableListView(BWindow* window, BRect frame, const char *name, bool new_accepts_drags, bool new_remove_on_drag, list_view_type type, uint32 resizingMode, uint32 flags)
+	:BListView(frame, name, type, resizingMode, flags),
+	remove_on_drag(new_remove_on_drag),
+	accepts_drags(new_accepts_drags),
+	win(window)
 	{
-	remove_on_drag = new_remove_on_drag;
-	accepts_drags = new_accepts_drags;
+		
 	}
 
 bool DraggableListView::InitiateDrag(BPoint point, int32 index, bool wasSelected)
@@ -56,8 +58,15 @@ void DraggableListView::MessageReceived(BMessage *message)
 				while (current_item < item_count)
 					{
 					message->FindString("filter_name", current_item, &text);
-					AddItem(new BStringItem(text));
+					BStringItem *newItem = new BStringItem(text);
+					AddItem(newItem);
 					current_item++;
+					// send a message to the app telling it to Commission the filter
+					BMessage *activate = new BMessage(SM_ACTIVATE_FILTER);
+					activate->AddString("filter_name", text);
+					activate->AddInt32("index", IndexOf(newItem)); 
+					//post the message
+					Window()->PostMessage(activate);
 					}
 				}
 			break;

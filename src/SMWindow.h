@@ -2,17 +2,23 @@
 	SMWindow.h
 	bdcribbs@uiuc.edu
 */
-
-#ifndef _SMWINDOW_H
-#define _SMWINDOW_H
+#pragma once
+//#ifndef _SMWINDOW_H
+//#define _SMWINDOW_H
 
 #include <Window.h>
 #include <Menu.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
+
+#include "SMFilterManager.h"
+
 #define SM_MENU_OPEN '$Mmo'
 #define SM_MENU_SAVE '$Mms'
 #define SM_MENU_SAVAS '$MmS'
+#define SM_OPEN_SOUND_PREFS '$Msp'
+#define SM_SHOW_FILTER_VIEW '$Mvw'
+#define SM_FILTER_SELECTED '$Mfs'
 
 #define BUTTON_WIDTH		 (38 - 1)
 #define BUTTON_HEIGHT		 (22 - 1)
@@ -328,8 +334,10 @@ public:
 				void SettingFunc(entry_ref setter);
 				virtual void MessageReceived(BMessage* message);
 virtual	bool	QuitRequested();
+virtual void	AboutRequested();
 protected:
 	entry_ref document_ref;
+	SMFilterManager * m;
 };
 
-#endif
+//#endif

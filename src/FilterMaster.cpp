@@ -1,5 +1,5 @@
 /*
-	File:	FilterMaster.cpp
+	File:	SMFilterMaster.cpp
 	Author:	Chip Paul (cpaul@resgen.com)
 	Created: 11/22/97 17:41:39
 	Function:

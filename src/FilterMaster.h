@@ -4,7 +4,7 @@
 	Created: 11/22/97 15:35:31
 	Function:
 		Handles management of the audio streams and threads,
-		calling each filter function for teh various filters.
+		calling each filter function for the various filters.
 */
 #include <AudioStream.h>
 #include <Subscriber.h>
