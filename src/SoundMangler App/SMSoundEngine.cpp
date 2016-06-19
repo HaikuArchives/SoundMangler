@@ -3,8 +3,9 @@
 // Be Users Group @ UIUC - SoundMangler Project
 // 2/17/1998
 
-#include "SMSoundEngine.h"
+#include "SMFilter.h"
 #include "SMMsgDefs.h"
+#include "SMSoundEngine.h"
 
 #define SRATE 44100
 
@@ -39,7 +40,6 @@ void SMSoundEngine::Go() {
 	outStream->EnableDevice(B_LOOPBACK,false);
 	audioIn->EnterStream(NULL,true, (void *)this,_listen,NULL,true);
 	audioOut->EnterStream(NULL,true, (void *)this,_talk,NULL,true);
-	resume_thread(proc_thread);
 }
 
 // Stops the processing
@@ -62,7 +62,7 @@ bool SMSoundEngine::Listen(int16* data, int32 count) {
 	// Read into the buffers.
 	acquire_sem(write_sem[write_index]);
 	for (int i=0;i<count;i++)
-		 samples[write_index][i]=data[i]/4;
+		 samples[write_index][i]=data[i];
 		 
 	/* Send the underlap buffer to the proc thread. */
 	if (send_data(proc_thread, write_index, NULL, 0) < B_NO_ERROR)
@@ -81,7 +81,7 @@ bool SMSoundEngine::_talk(void *data, char *buf, size_t count, void *header) {
 bool SMSoundEngine::Talk(int16* data, int32 count) {
 	acquire_sem(read_sem[read_index]);
 	for (int i=0;i<count;i++)
-		data[i] = samples[read_index][i];
+		data[i] = samples[read_index][i]/4;
 	release_sem(write_sem[read_index]);
 	read_index = (read_index+1)%STREAM_BUF_COUNT;
 	return true;
@@ -112,6 +112,15 @@ void SMSoundEngine::Proc() {
 			right[i] = samples[index][2*i+1];
 		}
 		
+		filterLock->Lock();
+		SMFilter* currentFilter;
+		int32 numFilters = filterList->CountItems();
+		for (int i=0;i<numFilters;i++) {
+			currentFilter = (SMFilter*)filterList->ItemAt(i);
+			currentFilter->Filter((int16*)&left,(int16*)&right, STREAM_BUF_SIZE/CHANNEL_COUNT);	
+		}
+		filterLock->Unlock();
+		
 		// Recombine the stereo channels
 		for (int i=0;i<STREAM_BUF_SIZE/CHANNEL_COUNT;i++) {
 			samples[index][2*i] = left[i];
@@ -126,10 +135,11 @@ void SMSoundEngine::Proc() {
 // Initializes thread stuff
 void SMSoundEngine::InitThreads() {
 	continue_processing = true;
-	proc_thread = spawn_thread(proc_invoc,"sound processor",B_REAL_TIME_PRIORITY,
+	proc_thread = spawn_thread(proc_invoc,"sound processor",90,
 		(void *)this);
-	
+	resume_thread(proc_thread);
 }
+
 // Initializes the audio streams and subscribers.
 void SMSoundEngine::InitAudio(SoundSource src) {
 	outStream = new BDACStream();

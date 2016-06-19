@@ -2,13 +2,27 @@
 // Be Users Group @ UIUC - SoundMangler Project
 // 2/17/1998
 
-#include <AppKit.h>
-
 #include "Colors.h"
 #include "DraggableListView.h"
 #include "SMMsgDefs.h"
 #include "SMPlayButton.h"
 #include "SMWindow.h"
+
+class BitmapView : public BView {
+	public:
+		BitmapView(BRect rect, const char* name, BMessage* bm) :
+			BView(rect, name, B_FOLLOW_ALL_SIDES, B_WILL_DRAW | B_NAVIGABLE) {
+			bitmap = new BBitmap(bm);
+		}
+		~BitmapView() {
+			delete bitmap;
+		}
+		virtual void Draw(BRect rect) {
+			DrawBitmap(bitmap);
+		}
+	protected:
+		BBitmap* bitmap;
+};
 
 SMWindow::SMWindow()
 	:BWindow(BRect(100,100,600,400), "Sound Mangler", B_TITLED_WINDOW, B_NOT_H_RESIZABLE|B_NOT_ZOOMABLE) {	
@@ -52,21 +66,40 @@ SMWindow::SMWindow()
 	BView* back = new BView(back_frame, "background", B_FOLLOW_ALL_SIDES, B_WILL_DRAW|B_NAVIGABLE);
 	back->SetViewColor(BeBackgroundGrey);
 	
-	DraggableListView* available_list = new DraggableListView(BRect(5,5,110,277), "available_list", false, false, B_SINGLE_SELECTION_LIST, B_FOLLOW_TOP_BOTTOM);
+	DraggableListView* available_list = new DraggableListView(BRect(5,5,110,277), "available_list", addon, false, false, B_SINGLE_SELECTION_LIST, B_FOLLOW_TOP_BOTTOM);
 	back->AddChild(new BScrollView("available_scroll_view",available_list,B_FOLLOW_TOP_BOTTOM,0,false,true));
-//	available_list->AddItem(new BStringItem("foo filter"));
+	available_list->AddItem(new BStringItem("foo filter"));
 	
-	DraggableListView* active_list = new DraggableListView(BRect(130,5,235,277), "active_list", true, true, B_SINGLE_SELECTION_LIST, B_FOLLOW_TOP_BOTTOM);
+	DraggableListView* active_list = new DraggableListView(BRect(130,5,235,277), "active_list", filter, true, true, B_SINGLE_SELECTION_LIST, B_FOLLOW_TOP_BOTTOM);
 	back->AddChild(new BScrollView("active_scroll_view",active_list,B_FOLLOW_TOP_BOTTOM,0,false,true));
 	
-	back->AddChild(new BButton(BRect(255,255,375,277), "soundPrefs", "Sound Preferences", new BMessage(SM_SOUND_PREFS), B_FOLLOW_LEFT | B_FOLLOW_BOTTOM));
+	back->AddChild(new BButton(BRect(255,255,375,277), "sound_prefs", "Sound Preferences", new BMessage(SM_SOUND_PREFS), B_FOLLOW_LEFT | B_FOLLOW_BOTTOM));
 	back->AddChild(new SMPlayButton(BRect(380,256,420,278), "play_button", new BMessage(SM_TOGGLE_PLAY), B_FOLLOW_LEFT | B_FOLLOW_BOTTOM));
+	
+	app_info info;
+	be_app->GetAppInfo(&info);
+	BFile app_file(&info.ref, B_READ_ONLY);
+	BResources rsrcs(&app_file);
+	size_t len;
+	int32 res_id;
+	rsrcs.GetResourceInfo('ARCV', "Splash Screen", &res_id, &len);
+	status_t err;
+	char* data = new char[len];
+	rsrcs.ReadResource('ARCV', res_id, data, 0, len);
+	BMessage archive;
+	err = archive.Unflatten(data);
+	delete[] data;
+	BBitmap splash_screen(&archive);
+	default_view = new BitmapView(BRect(255,5,495,250),"default_view", &archive);
+	back->AddChild(new BScrollView("filter_prefs_view",default_view,B_FOLLOW_TOP_BOTTOM,0,false,false));
 	
 	AddChild(back);
 	Show();
 }
 
 SMWindow::~SMWindow() {
+	default_view->RemoveSelf();
+	delete default_view;
 }
 
 void SMWindow::MessageReceived(BMessage *msg) {
@@ -85,9 +118,19 @@ void SMWindow::MessageReceived(BMessage *msg) {
 				(new BAlert("", "Unable to open Sound Preferences!", "OK"))->Go();
 			break;
 		}
-		case SM_VIEW:
+		case SM_VIEW: {
+			// Remove existing view
+			BView* container_view = FindView("filter_prefs_view");
+			BView* prefs_view;
+			if (container_view->CountChildren() > 0) {
+				prefs_view = container_view->ChildAt(0);
+				prefs_view->RemoveSelf();
+			}
 			// Add view to the filter prefs panel
+			msg->FindPointer("view", &prefs_view);
+			container_view->AddChild(prefs_view);
 			break;
+		}
 		case SM_UPDATE_ADDONS: {
 			// Delete contents of add-on list and add new set
 			BListView* available_list = cast_as(FindView("available_list"), BListView);
@@ -138,6 +181,20 @@ void SMWindow::MessageReceived(BMessage *msg) {
 				is_filtering = true;
 			}
 			break;
+		case B_SIMPLE_DATA: {
+			entry_ref ref;
+			msg->FindRef("refs", &ref);
+			BNode node(&ref);
+			BNodeInfo ni(&node);
+			char file_type[B_MIME_TYPE_LENGTH];
+			ni.GetType(file_type);
+			if (strcmp(file_type, SM_FILE_SIGNATURE) == 0) {
+				BMessage open_msg(B_REFS_RECEIVED);
+				open_msg.AddRef("refs", &ref);
+				be_app_messenger.SendMessage(&open_msg);
+			}
+			break;
+		}
 		default:
 			BWindow::MessageReceived(msg);
 			break;

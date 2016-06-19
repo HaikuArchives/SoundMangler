@@ -16,7 +16,7 @@ int main() {
 	return 0;
 }
 
-SMApp::SMApp() :
+SMApp::SMApp():
 	BApplication(SM_APP_SIGNATURE)
 {
 	SetPulseRate(50000);
@@ -58,6 +58,10 @@ void SMApp::MessageReceived(BMessage *msg) {
 		printf("\n");
 	}
 	switch(msg->what) {
+		case SM_VIEW:
+			// send the message to the window
+			main_window.SendMessage(msg);
+			break;
 		case SM_NEW:
 			// Clear in-use filter list and unset save file
 			break;
@@ -67,15 +71,24 @@ void SMApp::MessageReceived(BMessage *msg) {
 			break;
 		case SM_SAVE: {
 			// Save to currently opened file
-			BMessage numsg(B_REFS_RECEIVED);
-			numsg.AddRef("refs", &filter_document);
-			PostMessage(&numsg);
+			Save();
 			break;
 		}
 		case SM_SAVE_AS:
 			// Allow user to select file to save to
 			save_panel->Show();
 			break;
+		case B_SAVE_REQUESTED: {
+			entry_ref dir_ref;
+			char* file_name;
+			msg->FindRef("directory", &dir_ref);
+			msg->FindString("name", &file_name);
+			BDirectory dir(&dir_ref);
+			BEntry entry(&dir, file_name);
+			entry.GetRef(&filter_document);
+			Save();
+			break;
+		}
 		case SM_START:
 			// Tell the sound filters to start
 			sound_engine.SendMessage(msg);
@@ -84,24 +97,41 @@ void SMApp::MessageReceived(BMessage *msg) {
 			// Tell the sound filters to stop
 			sound_engine.SendMessage(msg);
 			break;
-		case SM_ABOUT_VIEW:
+		case SM_ABOUT_VIEW: {
 			// Get the about view for the selected filter and return it
+			BView* v;
+			char * name;
+			msg->FindString("addon_name", &name);
+			v = filter_manager->AboutView(name);
+			BMessage reply(SM_VIEW);
+			reply.AddPointer("view",v);
+			msg->SendReply(&reply);
 			break;
-		case SM_PREFS_VIEW:
-			// Get the prefs view for the selected filter and return it
+		}
+		case SM_PREFS_VIEW: {
+			// Get the about view for the selected filter and return it
+			BView* v;
+			filter_id fID;
+			msg->FindInt32("filter_id", &fID);
+			v = filter_manager->PrefsView(fID);
+			BMessage reply(SM_VIEW);
+			reply.AddPointer("view",v);
+			msg->SendReply(&reply);
 			break;
+		}
 		case SM_REMOVE_ADDON:
 			// Remove the addon from the available list
 			break;
 		case SM_ADD_ADDON:
 			// Add the addon from the available list
 			break;
-		case SM_REMOVE_FILTER:
+		case SM_REMOVE_FILTER: {
 			// The filter is no longer in-use
+			filter_id fID;
+			msg->FindInt32("filter_id",&fID);
+			filter_manager->Deactivate(fID);
 			break;
-		case SM_MOVE_FILTER:
-			// The filter previously removed has been added to the in-use list
-			break;
+		}
 		case SM_ADD_FILTER: {
 			// An add-on has been added to the in-use list
 			int32 position;
@@ -113,7 +143,6 @@ void SMApp::MessageReceived(BMessage *msg) {
 			BMessage reply(SM_NEW_FILTER);
 			reply.AddInt32("filter_id", fID);
 			msg->SendReply(&reply);
-
 			break;
 		}
 		case SM_ADDON_LIST:
@@ -135,19 +164,69 @@ bool SMApp::QuitRequested() {
 }
 
 void SMApp::RefsReceived(BMessage *message) {
-	entry_ref gets;
 	status_t error;
-	error = message->FindRef("refs", &gets);
+	error = message->FindRef("refs", &filter_document);
 	if (error != B_OK)
-		(new BAlert("", "App: File Reference not Found in SMApp::RefsReceived" , "OK"))->Go();
-	Open(gets);
+		(new BAlert("", "App: File reference not found in SMApp::RefsReceived." , "OK"))->Go();
+	Open();
 }
 
 void SMApp::Save() {
+	BList filter_list(*filter_manager->getFilterList());
+	int32 current_filter = 0;
+	int32 filter_count = filter_list.CountItems();
+	BMessage filter_data;
+	BMessage prefs_data;
+	while (current_filter < filter_count) {
+		((BArchivable*)filter_list.ItemAt(current_filter))->Archive(&filter_data);
+		prefs_data.AddMessage("filter_data", &filter_data);
+		current_filter++;
+	}
+	const ssize_t prefs_size = prefs_data.FlattenedSize();
+	char* buffer = new char[prefs_size];
+	prefs_data.Flatten(buffer, prefs_size);
+	BFile file(&filter_document, B_WRITE_ONLY | B_CREATE_FILE | B_ERASE_FILE);
+	file.Write(buffer, prefs_size);
+	delete[] buffer;
+	BNodeInfo ni(&file);
+	ni.SetType(SM_FILE_SIGNATURE);
 }
 
-void SMApp::Open(entry_ref gets) {
+void SMApp::Open() {
+	New();
+	BFile file(&filter_document, B_READ_ONLY);
+	off_t prefs_size = 0;
+	file.GetSize(&prefs_size);
+	char* buffer = new char[prefs_size];
+	file.Read(buffer,prefs_size);
+	BMessage prefs_data;
+	prefs_data.Unflatten(buffer);
+	delete[] buffer;
+	BMessage filter_data;
+	BList* filter_list = filter_manager->getFilterList();
+	BLocker* filter_list_lock = filter_manager->getLock();
+	int32 current_filter = 0;
+	int32 filter_count = 0;
+	type_code type_found;
+	prefs_data.GetInfo("filter_data", &type_found, &filter_count);
+	while (current_filter < filter_count) {
+		prefs_data.FindMessage("filter_data", current_filter, &filter_data);
+		filter_list_lock->Lock();
+		filter_list->AddItem(cast_as(instantiate_object(&filter_data),SMFilter));
+		filter_list_lock->Unlock();
+		current_filter++;
+	}
+	main_window.SendMessage(filter_manager->getIDMapList());
 }
 
-void SMApp::SettingFunc(entry_ref setter) {
+bool SMApp::New() {
+	BList* filter_list = filter_manager->getFilterList();
+	BLocker* filter_list_lock = filter_manager->getLock();
+	int32 response = 1;
+	if (filter_list->CountItems() > 0)
+		response = (new BAlert("","Discard current settings?","Cancel","Discard"))->Go();
+	if (response == 1) {
+		return true;
+	} else
+		return false;
 }

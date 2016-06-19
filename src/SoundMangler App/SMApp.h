@@ -4,10 +4,6 @@
 
 #pragma once
 
-// The MIME type application signature
-#define SM_APP_SIGNATURE "application/x-vnd.BUGatUIUC-SoundMangler"
-#define SM_FILE_SIGNATURE "application/x-vnd.BUGatUIUC-SoundManglerPrefs"
-
 class SMFilterManager;
 
 // The application coordinates the add-ons and filters with the
@@ -26,8 +22,8 @@ class SMApp : public BApplication {
 	protected:
 		// File Functions
 		void Save();
-		void Open(entry_ref gets);
-		void SettingFunc(entry_ref setter);
+		void Open();
+		bool New();
 		
 		// Member Data
 		entry_ref filter_document;

@@ -7,21 +7,24 @@
 
 #include "SMFilter.h"
 
-
 #pragma export on
 
 extern "C" {
-	SMFilter* MakeNewFilter( const char* name );
+	SMFilter* MakeNewFilter(const char* name);
+	BView* AboutView();
 }
 
 class MuteFilterView;
 
 class MuteFilter : public SMFilter {
 	public:
-		MuteFilter( const char* name );
-		virtual void MessageReceived( BMessage* msg );
-		virtual void Filter( int16* left, int16* right, int32 count);
-		virtual BView* PrefsView( BRect rect );
+		MuteFilter(const char* name);
+		MuteFilter(BMessage* archive);
+		static MuteFilter* Instantiate(BMessage* archive);
+		virtual status_t Archive(BMessage* archive, bool deep = true) const;
+		virtual void MessageReceived(BMessage* msg);
+		virtual void Filter(int16* left, int16* right, int32 count);
+		virtual BView* PrefsView();
 	protected:
 		bool mute;
 };

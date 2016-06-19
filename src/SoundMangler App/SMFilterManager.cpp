@@ -40,6 +40,16 @@ SMFilterManager::SMFilterManager() :
 		}
 		images[filterName]=image;  // add to map
 		fNames.AddString("addon_name", filterName);
+		// get AboutView
+		fprintf(stdout, "Getting AboutView\n"); fflush(stdout);
+		BView* (*about)();
+		if (B_OK != 
+			get_image_symbol(image, "AboutView", B_SYMBOL_TYPE_TEXT, &about)
+		)
+			fprintf(stdout, "Couldn't get thew view!\n"); fflush(stdout);
+		avmap[filterName]=(*about)();
+
+		delete filterName;
 	}	
 }
 
@@ -47,20 +57,20 @@ SMFilterManager::~SMFilterManager() {
 
 	// delete filters and unload images
 
+	fprintf(stdout, "Deleting filters. "); fflush(stdout);
+	SMFilter* f;
+	SMFilter* tmp;		
+	for (long i = 0; NULL != (f = (SMFilter*)filters->ItemAt(i)); i++) {
+		tmp = (SMFilter*)filters->RemoveItem(i);
+		tmp->Quit();
+	}
+	fprintf(stdout, "done.\n"); fflush(stdout);
+
 	for (image_id_map::iterator p=images.begin(); p!=images.end(); ++p) {
 		fprintf(stdout, "Unloading %s, id: %d. ", (*p).first.c_str(), (*p).second); fflush(stdout);
 		unload_add_on((*p).second);
 		fprintf(stdout, "done.\n"); fflush(stdout);
 	}	
-
-	fprintf(stdout, "Deleting filters. "); fflush(stdout);
-	SMFilter* f;
-	SMFilter* tmp;		
-	for (long i = 0; f = (SMFilter*)filters->ItemAt(i); i++) {
-		tmp = (SMFilter*)filters->RemoveItem(i);
-		delete tmp;
-	}
-	fprintf(stdout, "done.\n"); fflush(stdout);
 
 	// delete lists and lock
 	// (make sure we're not filtering!)
@@ -133,6 +143,15 @@ status_t SMFilterManager::Activate(char* filterName, int pos, filter_id& fID) {
 	// filter id
 	filter_id id = (filter_id)filter;
 	ids[id] = filter;
+
+	// get PrefsView
+	BView * pv = filter->PrefsView();
+	pvmap[id] = pv;
+	// send to window
+	BMessage pvmsg(SM_VIEW);
+	pvmsg.AddPointer("view", pv);
+	be_app->PostMessage(&pvmsg);
+	
 	// filter* list
 	lock->Lock();
 	filters->AddItem(filter, pos);
@@ -144,6 +163,7 @@ status_t SMFilterManager::Activate(char* filterName, int pos, filter_id& fID) {
 }
 
 status_t SMFilterManager::Deactivate(filter_id id) {
+	fprintf(stdout, "Deleting filter %d\n",id); fflush(stdout);
 	// get the filter
 	SMFilter* tmpf;
 	filter_id_map::iterator p = ids.find(id);
@@ -162,19 +182,60 @@ status_t SMFilterManager::Deactivate(filter_id id) {
 	}
 	lock->Unlock();
 
+	// delete its PrefsView
+	BView *pv;
+	prefs_view_map::iterator q = pvmap.find(id);
+	if (q!=pvmap.end()) {
+		pv = (*q).second;
+		fprintf(stdout, "found filter by id %d\n",  id); fflush(stdout);
+	}
+	else
+		fprintf(stdout, "Damn! find filter by id %d failed!\a\n",  id); fflush(stdout);
+	BLooper* view_looper = pv->Looper();
+	if (view_looper->Lock()) {
+		pv->RemoveSelf();
+		view_looper->Unlock();
+	}
+	delete pv;
+
 	//  delete filter
-	delete tmpf;
+	tmpf->Quit();
 	return B_OK;	
 }
 
-BView* SMFilterManager::PrefsView(filter_id id) { return NULL; } 
-BView* SMFilterManager::AboutView(filter_id id) { return NULL; } 
+BView* SMFilterManager::PrefsView(filter_id id) { 
+	fprintf(stdout,"PrefsView(%d)\n", id); fflush(stdout);
+//	(new BAlert("", "PrefsView", "OK"))->Go();
+	BView *pv;
+	prefs_view_map::iterator p = pvmap.find(id);
+	if (p!=pvmap.end()) {
+		pv = (*p).second;
+		fprintf(stdout, "found filter by id %d\n",  id); fflush(stdout);
+	}
+	else
+		fprintf(stdout, "Damn! find filter by id %d failed!\a\n",  id); fflush(stdout);
+	return pv;
+}
+	
+BView* SMFilterManager::AboutView(char * filterName) { 
+	BView *av;
+	about_view_map::iterator p = avmap.find(filterName);
+	if (p!=avmap.end()) {
+		av = (*p).second;
+	}
+	else {
+		printf("Finding the AboutView failed. You're screwed.\n"); fflush(stdout);
+	}
+	
+	return av;
+}
+
 
 BMessage* SMFilterManager::getIDMapList() { 
 	// shove the map contents into a message
 	for (filter_id_map::iterator p=ids.begin(); p!=ids.end(); ++p) {
 		fList.AddInt32("filter_id", (*p).first);
-		fList.AddString("filter_name", ((*p).second)->getName());
+		fList.AddString("filter_name", ((*p).second)->Name());
 	}
 	return &fList;
 }

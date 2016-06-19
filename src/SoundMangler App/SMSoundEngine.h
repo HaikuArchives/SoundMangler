@@ -56,7 +56,7 @@ class SMSoundEngine : public BLooper {
 		BAbstractBufferStream* inStream;
 		BDACStream* outStream;
 		// Samples
-		int16 samples[STREAM_BUF_COUNT][SAMPLE_COUNT];
+		int16 samples[STREAM_BUF_COUNT][SAMPLE_COUNT*4];
 		// Semaphores for locking read and write channels
 		sem_id write_sem[STREAM_BUF_COUNT];
 		sem_id read_sem[STREAM_BUF_COUNT];

@@ -15,4 +15,5 @@ class SMWindow : public BWindow {
 		virtual void MessageReceived(BMessage* msg);
 	protected:
 		bool is_filtering;
+		BView* default_view;
 };

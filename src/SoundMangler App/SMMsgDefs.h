@@ -4,6 +4,10 @@
 
 #pragma once
 
+// The MIME type application signature
+#define SM_APP_SIGNATURE "application/x-vnd.BUGatUIUC-SoundMangler"
+#define SM_FILE_SIGNATURE "application/x-vnd.BUGatUIUC-SoundManglerPrefs"
+
 enum {
 	// Message Open
 	// Source: SMWindow
@@ -61,20 +65,20 @@ enum {
 	// Tells window to open sound preferneces panel
 	SM_SOUND_PREFS = '$Msp',
 	
-	// Message Show Filter About
+	// Message Show Add-on About
 	// Source: SMWindow(Available List)
 	// Target: SMApp
-	// Data: filter_id
-	// Reply: SM_ARCHIVED_VIEW
-	// Tells filter to create about view
+	// Data: addon_name
+	// Reply: SM_VIEW
+	// Tells app to create about view
 	SM_ABOUT_VIEW = '$Mav',
 	
 	// Message Show Filter Prefs
 	// Source: SMWindow(In-Use List)
 	// Target: SMApp
 	// Data: filter_id
-	// Reply: SM_ARCHIVED_VIEW
-	// Tells filter to create preferences view
+	// Reply: SM_VIEW
+	// Tells app to create preferences view
 	SM_PREFS_VIEW = '$Mpv',
 	
 	// Message Remove Add-on
@@ -128,7 +132,7 @@ enum {
 	// Message Filter List
 	// Source: SMApp
 	// Target: SMWindow
-	// Data: filter_name, filter_id
+	// Data: filter_names, filter_ids
 	// Reply: none
 	// Tells window to add filters to list
 	SM_FILTER_LIST = '$Mfl',
@@ -144,15 +148,15 @@ enum {
 	// Message Update Available Add-ons
 	// Source: SMApp
 	// Target: SMWindow
-	// Data: addon_name
+	// Data: addon_names
 	// Reply: none
 	// Tells window to update available add-ons list
 	SM_UPDATE_ADDONS = '$Mua',
 	
 	// Message Help Requested
 	// Source: SMWindow
-	// Target: SMWindow
-	// Data: none
+	// Target: SMWindow SMApp
+	// Data: addon_name(optional)
 	// Reply: none
 	// Tells window to open help file
 	SM_HELP_REQUESTED = '$Mhr',
