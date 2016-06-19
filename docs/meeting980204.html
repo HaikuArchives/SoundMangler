@@ -1,0 +1,105 @@
+<html>
+<head>
+<title>BUG SoundMangler Planning Meeting 2/4/98</title>
+</head>
+<body bgcolor="#ffffff">
+<table border=0>
+	<tr><td colspan=2><h1>BUG SoundMangler Planning Meeting 2/4/98</h1></td></tr>
+	<tr><td width=200><table border=1><tr><td>Our goal is to enable programmers and end-users to filter live and recorded audio without requiring intricate knowledge of the BeOS audio streams.</blockquote><p align="right">-Chip Paul</p></td></tr></table></td><td width=400>
+	<blockquote>
+	<table border=0>
+		<tr><td><h3>Attendance:</h3></td></tr>
+		<tr><th>Name:</th><th>E-mail:</th></tr>
+		<tr><td>Mike Khalili</td><td><a href="mailto:khalili@uiuc.edu">khalili@uiuc.edu</a></td></tr>
+		<tr><td>Jason Luther</td><td><a href="mailto:jluther@uiuc.edu">jluther@uiuc.edu</a></td></tr>
+		<tr><td>Charlie Powe</td><td><a href="mailto:powe@uiuc.edu">powe@uiuc.edu</a></td></tr>
+		<tr><td>Matt Wronkiewicz</td><td><a href="mailto:wronkiew@uiuc.edu">wronkiew@uiuc.edu</a></td></tr>
+	</table>
+	</blockquote>
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>
+	<h3>Interface Elements</h3>
+	<p>The controls on the interface of SoundMangler are listed below:</p>
+	<ul>
+		<li>Available List</li>
+		<ul>
+			<li>Select (About)</li>
+			<li>Drag</li>
+		</ul>
+		<li>In-use List</li>
+		<ul>
+			<li>Selection</li>
+			<li>Item Moved</li>
+			<li>Insertion</li>
+			<li>Removed</li>
+		</ul>
+		<li>Start/Stop Button</li>
+		<li>Add-on View</li>
+		<li>Dragged/Dropped Files</li>
+	</ul>
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>
+	<h3>Responsibilities of Filtering Kernel</h3>
+	<p><b>Sound Filtering Core</b></p>
+	<ul>
+		<li>Start Filtering</li>
+		<li>Stop Filtering</li>
+		<li>Initialization</li>
+		<li>Quit/Cleanup</li>
+	</ul>
+	<p><b>Add-on Handling</b></p>
+	<ul>
+		<li>List of filters</li>
+		<li>Owns filters</li>
+		<li>Making lists for window</li>
+		<ul>
+			<li>Add-on handler updates interface</li>
+		</ul>
+		<li>Loads add-on code</li>
+		<li>Activates filters</li>
+		<li>Deactivates filters</li>
+	</ul>
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>
+	<h3>File/Preferences Management</h3>
+	<ul>
+		<li>Document</li>
+		<ul>
+			<li>Order of filter</li>
+			<li>Filter settings</li>
+		</ul>
+		<li>Opening</li>
+		<ul>
+			<li>Instantiate and add to list (add-on handling)</li>
+		</ul>
+	</ul>
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>
+	<h3>UI Design</h3>
+	<img src="smui980204.jpeg">
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>
+	<h3>Add-on Structure</h3>
+	<ul>
+		<li>Self-install</li>
+		<li>Construct and return a filter object</li>
+		<li>Instantiate from BMessage</li>
+		<li>Archive to a BMessage</li>
+		<li>About View for available filters</li>
+		<li>Control View for in-use filters</li>
+	</ul>
+	</td>
+	</tr>
+</table>
+</body>
+</html>

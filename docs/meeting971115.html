@@ -1,0 +1,127 @@
+<html>
+<head>
+<title>BUG SoundMangler Planning Meeting 11/15/97</title>
+</head>
+<body bgcolor="#ffffff">
+<table border=0>
+<tr><td colspan=2><h1>BUG SoundMangler Planning Meeting 11/15/97</h1></td></tr>
+<tr><td width=200><table border=1><tr><td>Our goal is to enable programmers and end-users to filter live and recorded audio without requiring intricate knowledge of the BeOS audio streams.</blockquote><p align="right">-Chip Paul</p></td></tr></table></td><td width=400>
+<blockquote><table border=0>
+<tr><td><h3>Attendance:</h3></td></tr>
+<tr><th>Name:</th><th>E-mail:</th></tr>
+<tr><td>Bryan Cribbs</td><td><a href="mailto:bdcribbs@uiuc.edu">bdcribbs@uiuc.edu</a></td></tr>
+<tr><td>Mike Khalili</td><td><a href="mailto:khalili@uiuc.edu">khalili@uiuc.edu</a></td></tr>
+<tr><td>Vikram Kulkarni</td><td><a href="mailto:vkulkarn@uiuc.edu">vkulkarn@uiuc.edu</a></td></tr>
+<tr><td>Jason Luther</td><td><a href="mailto:jluther@uiuc.edu">jluther@uiuc.edu</a></td></tr>
+<tr><td>Chip Paul</td><td><a href="mailto:r-paul@uiuc.edu">r-paul@uiuc.edu</a></td></tr>
+<tr><td>Charlie Powe</td><td><a href="mailto:powe@uiuc.edu">powe@uiuc.edu</a></td></tr>
+<tr><td>Matt Wronkiewicz</td><td><a href="mailto:wronkiew@uiuc.edu">wronkiew@uiuc.edu</a></td></tr>
+</table>
+</blockquote>
+</td>
+</tr>
+<tr><td colspan=2><h3>User Interface Design</h3><img src="filter_ui.gif"><p>The user interface of SoundMangler consists of a menu hierarchy, two list boxes, a vew for configuring sound preferences, and two buttons. The menu bar contains a file menu, an edit menu, and a help menu. The items in these menus are listed below:</p>
+<table border=0><tr>
+<td><table border=0>
+<tr><td><b>File</b></td></tr>
+<tr><td>New</td></tr>
+<tr><td>Open</td></tr>
+<tr><td>Save</td></tr>
+<tr><td>Save As....</td></tr>
+<tr><td>Close</td></tr>
+<tr><td>Reload Add-Ons</td></tr>
+<tr><td>Quit</td></tr>
+</td></tr>
+</table></td>
+<td><table border=0>
+<tr><td><b>Edit</b></td></tr>
+<tr><td>Cut</td></tr>
+<tr><td>Copy</td></tr>
+<tr><td>Paste</td></tr>
+<tr><td>Clear</td></tr>
+<tr><td>Select All</td></tr>
+<tr><td>&nbsp;</td></tr>
+<tr><td>&nbsp;</td></tr>
+</td></tr>
+</table></td>
+<td><table border=0>
+<tr><td><b>Help</b></td></tr>
+<tr><td>About SoundMangler</td></tr>
+<tr><td>Using SoundMangler</td></tr>
+<tr><td>Add-On Help</td></tr>
+<tr><td>&nbsp;</td></tr>
+<tr><td>&nbsp;</td></tr>
+<tr><td>&nbsp;</td></tr>
+<tr><td>&nbsp;</td></tr>
+</td></tr>
+</table></td>
+</tr></table>
+<p>The first list on the main view displays the available filters which can be applied to the audio stream. The second list displays only the filters which have been applied. Filters can be dragged from the first list to the second to apply the filter. Filters can be dragged out of the second list to remove it from the stream. If a filter is selected in the second list, its configuration screen is brought up in the config box on the right side of the window. There are two buttons on the bottom of the window. The first opens the Sound Preferences Control Panel. The second is a two-state button which turns the filters on and off.</p>
+</td></tr>
+<tr><td colspan=2><h3>Add-On API</h3><p>Audio filter add-ons are required to do several things:</p>
+<ul>
+<li>Mangle (filter) audio</li>
+<li>Spawn a help window</li>
+<li>Display a control view</li>
+<li>Initialize itself</li>
+<li>Save preferences to a stream</li>
+<li>Read preferences from a stream</li>
+</ul>
+<p>On start-up, the application searches for add-ons. Those it finds are put in the first list view. Each of the add-ons are initialized. The filter is a subclass of the Filter class, defined as:</p>
+<listing>
+class Filter {
+	Public:
+		Filter();
+		Initialize();
+		Mangle();
+		...
+};
+</listing>
+<p>An add-on must supply a function which returns a filter object. This function is defined below, but may be modified if implementation requires otherwise.</p>
+<listing>
+Filter* MakeNewFilter () {
+	return new MyFilter;
+}
+</listing>
+<p>Where MyFilter is a subclass of the Filter class defined earlier, defined and created in the add-on. When the application searches for add-ons and creates this filter, it must search for the symbol called MakeNewFilter.</p>
+<p>Several questions about the add-on api are addressed below::</p>
+<p><b>Question: </b>What is passed to the filter object on initialization?</p>
+<p><b>Answer: </b>The size of the BView for the configuration screen is passed in.</p>
+<p><b>Question: </b>How is the view handled in the application?</p>
+<p><b>Answer: </b>The add-on returns a subclass of BView which maintains its own controls.</p>
+</td></tr>
+<tr><td colspan=2><h3>Directory Structure</h3><p>The directory structure of the completed project is detailed below:</p>
+<listing>
+SoundMangler/
+	SoundMangler
+	Docs/
+		add-ons/
+			foo1/
+			foo2/
+		SoundMangler/
+	add-ons/
+	Samples/
+	Developers/
+		Docs/
+		etc...
+</listing>
+</td></tr>
+<tr><td colspan=2><h3>Job Breakdown</h3>
+<listing>
+Vikram	Filter Class
+Bryan	GUI
+Jason	Coordinating Add-Ons
+Matt	Draggable List
+Jason	Coordinating Documentation
+	Guts
+Chip		Filtering/Audio Thread
+Jason		Add-On Interface
+Mike		Load/Save
+All	About Box
+All	Documentation
+All	Icon
+</listing>
+</td></tr>
+</table>
+</body>
+</html>
